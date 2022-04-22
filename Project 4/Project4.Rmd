@@ -1,0 +1,25 @@
+---
+title: "Project 4"
+author: "Moiya Josephs"
+date: "4/21/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview
+Source: 
+https://www.kaggle.com/uciml/sms-spam-collection-dataset
+
+https://www.kaggle.com/venky73/spam-mails-dataset
+
+
+```{r}
+
+```
+```{r}
+spam_emails[2]
+```
+
