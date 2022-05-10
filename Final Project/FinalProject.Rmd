@@ -1,0 +1,326 @@
+---
+title: "Untitled"
+author: "Moiya Josephs"
+date: "5/9/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(recommenderlab)
+library(tidyverse)
+```
+
+# Overview
+
+```{r}
+data("MovieLense")
+movielense <- MovieLense
+remove(MovieLense)
+```
+
+
+Preview what the data looks like: 
+
+```{r}
+getRatingMatrix(movielense[1:10,1:4])
+```
+
+```{r}
+summary(getRatings(movielense))
+
+data.frame(ratings = getRatings(movielense)) %>%
+  ggplot(aes(ratings)) + geom_bar(width = 0.75)
+```
+
+```{r}
+train_proportion <- .75
+min(rowCounts(movielense))
+```
+```{r}
+items_per_test_user_keep <- 10
+# What's a good rating for a binary split?
+good_threshold <- 4
+```
+
+```{r}
+# Building a Recommender System with R by Gorakala and Usuelli. Ch.4 pp 77 - 83
+set.seed(12345)
+model_train_scheme <- movielense %>%
+  evaluationScheme(method = 'split', # single train/test split
+                   train = train_proportion, # proportion of rows to train.
+                   given = items_per_test_user_keep, # shouldn't keep n rec. items > min(rowCounts(movie_r))
+                   goodRating = good_threshold, # for binary classifier analysis.
+                   k = 1)
+```
+
+
+```{r}
+# Building a Recommender System with R by Gorakala and Usuelli. Ch.4 pp 84
+model_params <- list(method = "cosine",
+                     nn = 10, # find each user's 10 most similar users.
+                     sample = FALSE, # already did this.
+                     normalize = "center")
+
+model1 <- getData(model_train_scheme, "train") %>% #only fit on the 75% training data.
+  Recommender(method = "UBCF", parameter = model_params)
+```
+
+```{r}
+# 5.5 - 5.6. Evaluation of predicted ratings in recommenderLab vignette. can use n = for predicting TopN or type = for predicting ratings.
+# https://cran.r-project.org/web/packages/recommenderlab/vignettes/recommenderlab.pdf
+model1_pred <- predict(model1, getData(model_train_scheme, "known"), type = "ratings")
+model1_pred
+```
+
+```{r}
+test_error <- calcPredictionAccuracy(model1_pred, getData(model_train_scheme, "unknown"), byUser = TRUE)
+head(test_error)
+```
+```{r}
+eval_movies <- evaluationScheme(data = movielense, 
+                      method = "cross-validation", 
+                      k = 10,
+                      given = 15, 
+                      goodRating = 4)
+eval_movies
+```
+```{r}
+train_movies <- getData(eval_movies, "train")
+known_movies <- getData(eval_movies, "known")
+unknown_movies <- getData(eval_movies, "unknown")
+```
+
+```{r}
+
+data.frame(ratings = getRatings(train_movies)) %>%
+  ggplot(aes(ratings)) + geom_bar(width = 0.75)
+```
+```{r}
+
+data.frame(ratings = getRatings(known_movies)) %>%
+  ggplot(aes(ratings)) + geom_bar(width = 0.75)
+```
+```{r}
+
+data.frame(ratings = getRatings(unknown_movies)) %>%
+  ggplot(aes(ratings)) + geom_bar(width = 0.75)
+```
+
+
+```{r}
+ibcf <- 
+  train_movies %>%
+  Recommender(method = "IBCF") 
+
+ibcf_eval <- ibcf %>% 
+  predict(known_movies, type = "ratings") %>% 
+  calcPredictionAccuracy(unknown_movies)
+print(ibcf_eval)
+```
+
+```{r}
+ubcf <- 
+  train_movies %>%
+  Recommender(method = "UBCF")
+
+ubcf_eval <- ubcf %>% 
+  predict(known_movies, type = "ratings") %>% 
+  calcPredictionAccuracy(unknown_movies)
+
+print(ubcf_eval)
+
+```
+```{r}
+pop <- 
+  train_movies %>%
+  Recommender(method = "POPULAR")
+
+pop_eval <- pop %>% 
+  predict(known_movies, type = "ratings") %>% 
+  calcPredictionAccuracy(unknown_movies)
+
+print(pop_eval)
+
+```
+
+```{r}
+random <- 
+  train_movies %>%
+  Recommender(method = "RANDOM")
+
+random_eval <- random %>% 
+  predict(known_movies, type = "ratings") %>% 
+  calcPredictionAccuracy(unknown_movies)
+print(random_eval)
+
+```
+
+```{r}
+svd <- 
+  train_movies %>%
+  Recommender(method = "SVD")
+
+svd_eval <- svd %>% 
+  predict(known_movies, type = "ratings") %>% 
+  calcPredictionAccuracy(unknown_movies)
+print(svd_eval)
+
+
+```
+
+# Testing the best predictor
+
+```{r}
+recommendation_tv <- "C:/Users/josep/OneDrive/Documents/Data-607-Projects/Final Project/tv_shows.csv"
+recomm = read.csv(recommendation_tv,header=TRUE,sep=",")
+```
+
+
+# Analyze the data
+
+
+
+# Clean the data so that it looks like movie lense
+
+The data gives information that will just confuse the recommendation algorithm.
+
+Slice out all the important data.
+
+```{r}
+tv_shows_ratings = recomm[c(1,3,6,7)]
+tv_shows_ratings
+```
+
+Get rid of the / and only the rating
+
+```{r}
+
+library(stringr)
+tv_shows_ratings$IMDb <- str_split(tv_shows_ratings$IMDb,"/")[[1]]
+```
+
+```{r}
+tv_shows_ratings$Rotten.Tomatoes <- stringr::str_extract(tv_shows_ratings$Rotten.Tomatoes, "^.{3}")
+```
+
+```{r}
+tv_shows_ratings$Rotten.Tomatoes <- gsub("/","",tv_shows_ratings$Rotten.Tomatoes)
+```
+
+```{r}
+tv_shows_ratings$IMDb <- as.numeric(tv_shows_ratings$IMDb)
+tv_shows_ratings$Rotten.Tomatoes <- as.numeric(tv_shows_ratings$Rotten.Tomatoes)
+tv_shows_ratings
+```
+
+# IMDb ratings
+```{r}
+
+imdb_ratings = tv_shows_ratings[c(1,2,3)]
+
+imdb_ratings
+```
+# Apply the model
+
+```{r}
+#imdb_ratings_matrix = as(as.matrix(imdb_ratings), "realRatingMatrix")
+#min(rowCounts(imdb_ratings_matrix))
+
+# shouldn't keep n rec. items > min(rowCounts(movie_r))
+```
+```{r}
+ratingmat = dcast(imdb_ratings, X~Title, value.var = "IMDb", na.rm=FALSE)
+
+```
+
+
+```{r}
+imdb_ratings_matrix = as(d, "realRatingMatrix")
+```
+
+
+```{r}
+
+library(reshape2)
+d <- rbind( imdb_ratings$X, imdb_ratings$IMDb )
+imdb_ratings_matrix = as(d, "realRatingMatrix")
+getRatingMatrix(imdb_ratings_matrix)
+```
+
+
+```{r}
+eval_tv <- evaluationScheme(imdb_ratings_matrix, 
+                      method = "cross-validation", 
+                      k = 10,
+                      given = 1  , 
+                      goodRating = 5)
+eval_tv
+```
+```{r}
+
+train_movies <- getData(eval_tv, "train")
+known_movies <- getData(eval_tv, "known")
+unknown_movies <- getData(eval_tv, "unknown")
+```
+
+
+```{r}
+ibcf <- 
+  train_movies %>%
+  Recommender(method = "IBCF") 
+
+ibcf_eval <- ibcf %>% 
+  predict(known_movies, type = "ratings") %>% 
+  calcPredictionAccuracy(unknown_movies)
+print(ibcf_eval)
+```
+
+
+```{r}
+pop <- 
+  train_movies %>%
+  Recommender(method = "POPULAR")
+
+pop_eval <- pop %>% 
+  predict(known_movies, type = "ratings") %>% 
+  calcPredictionAccuracy(unknown_movies)
+
+print(pop_eval)
+```
+```{r}
+
+data.frame(ratings = getRatings(train_movies)) %>%
+  ggplot(aes(ratings)) + geom_bar(width = 0.75)
+```
+```{r}
+t<- read.delim("C:/Users/josep/Downloads/combined_data_1.txt/combined_data_1.txt", header = FALSE, sep = ",", dec = ".")
+
+```
+
+
+```{r}
+t
+```
+
+```{r}
+movie_divide <- which(is.na(t), arr.ind=TRUE)
+movie_divide
+```
+```{r}
+movie_divide
+```
+
+```{r}
+#Movie 1
+t[2:548,]
+```
+```{r}
+t[548:695,]
+```
+
+
+```{r}
+t[695:2708]
+```
+
