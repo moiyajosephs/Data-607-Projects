@@ -17,11 +17,18 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
+
+
+Original rating is 2,023,070 values. 
 ```{r}
 ratings <- read.csv("C:/Users/josep/OneDrive/Documents/Data-607-Projects/Final Project/ratings_Beauty.csv", header = TRUE, sep = ",", dec = ".")
 
 ```
-Check the class for each column since pare matrix and rea matrix are very partovulat
+
+
+
+
+Check the class for each column since pare matrix and real matrix are very particular.
 
 ```{r}
 class(ratings$UserId); class(ratings$ProductId); class(ratings$Rating); class(ratings$Timestamp)
@@ -40,70 +47,95 @@ Convert into ratings matrix
 ratingsMatrix <- sparseMatrix(as.integer(ratings$UserId), as.integer(ratings$ProductId), x = ratings$Rating)
 colnames(ratingsMatrix) <- levels(ratings$ProductId)
 rownames(ratingsMatrix) <- levels(ratings$UserId)
-amazon <- as(ratingsMatrix, "realRatingMatrix")
+amazon <- as(ratingsMatrix, "realRatingMatrix") #change to beauty
 ```
 
 ```{r}
 getRatingMatrix(amazon)[1:10,1:4]
 ```
 
-
-? keep?
 ```{r}
-( amazonShort <- amazon[rowCounts(amazon) > 10, colCounts(amazon) > 30] )
+table(rowCounts(amazon))
+```
+
+```{r}
+table(colCounts(amazon))
 ```
 
 
 ```{r}
-amazonShort <- amazon[ , colCounts(amazon) > 30]
-amazonShort <- amazonShort[rowCounts(amazonShort) > 10, ]
-amazonShort
-```
-```{r}
-table(rowCounts(amazonShort))
-```
-
-```{r}
-table(colCounts(amazonShort))
-```
-
-```{r}
-( amazonShort <- amazonShort[ , colCounts(amazonShort) != 0] )
-```
-```{r}
-df <- as.data.frame(as.matrix(amazonShort@data))
-df$UserId <- rownames(df)
-df <- df %>% gather(key = ProductId, value = Rating, -UserId) %>% filter(Rating != 0)
-write.csv(df, "./ratings_final.csv", row.names = FALSE)
+getRatings(amazon)
 ```
 
 
 
 ```{r}
-ratings <- read.csv("./ratings_final.csv")
+getRatingMatrix(amazon)[1:10,1:4]
 ```
 
 ```{r}
-ratings$UserId<- as.factor(ratings$UserId); 
-ratings$ProductId <- as.factor(ratings$ProductId)
+amazon <- amazon[,colCounts(amazon) >30]
+```
+
+```{r}
+amazon <- amazon[rowCounts(amazon) > 10, ]
+amazon
 ```
 
 
 ```{r}
-ratingsMatrix <- sparseMatrix(as.integer(ratings$UserId), as.integer(ratings$ProductId), x = ratings$Rating)
-colnames(ratingsMatrix) <- levels(ratings$ProductId)
-rownames(ratingsMatrix) <- levels(ratings$UserId)
-amazon <- as(ratingsMatrix, "realRatingMatrix")
+( amazon <- amazon[ , colCounts(amazon) != 0] )
 ```
 
-# Divide the data 
+
+# Build the model
+
+
+```{r}
+train_proportion <- .75
+min(rowCounts(amazon))
+```
+
+
+
+```{r}
+items_per_test_user_keep <- 11
+# What's a good rating for a binary split?
+good_threshold <- 4
+```
+
+```{r}
+# Building a Recommender System with R by Gorakala and Usuelli. Ch.4 pp 77 - 83
+set.seed(12345)
+beauty_evaluation <- amazon %>% evaluationScheme(method = 'split', # single train/test split
+                   train = train_proportion, # proportion of rows to train.
+                   given = items_per_test_user_keep, # shouldn't keep n rec. items > min(rowCounts(movie_r))
+                   goodRating = good_threshold, # for binary classifier analysis.
+                   k = 1)
+```
+
+
+
+```{r}
+# Building a Recommender System with R by Gorakala and Usuelli. Ch.4 pp 84
+model_params <- list(method = "cosine",
+                     nn = 10, # find each user's 10 most similar users.
+                     sample = FALSE, # already did this.
+                     normalize = "center")
+
+model1 <- getData(beauty_evaluation, "train") %>% #only fit on the 75% training data.
+  Recommender(method = "UBCF", parameter = model_params)
+```
+
+
+
+# Divide the data
 
 ```{r}
 set.seed(88)
-eval <- evaluationScheme(amazon, method = "split", train = 0.8, given = 5, goodRating = 3)
-train <- getData(eval, "train")
-known <- getData(eval, "known")
-unknown <- getData(eval, "unknown")
+train <- getData(beauty_evaluation, "train")
+known <- getData(beauty_evaluation, "known")
+unknown <- getData(beauty_evaluation, "unknown")
 ```
 
 
@@ -131,6 +163,42 @@ accPOP
 ```
 
 # USBF
+
+```{r}
+set.seed(88)
+train <- getData(beauty_evaluation, "train")
+known <- getData(beauty_evaluation, "known")
+unknown <- getData(beauty_evaluation, "unknown")
+```
+
+
+```{r}
+model_method <- "RANDOM"
+# Training
+
+modelPOP <- Recommender(train, method = model_method)
+```
+
+
+```{r}
+
+predPOP <- predict(modelPOP, newdata = known, type = "ratings")
+
+
+# Accuracy
+accPOP <- calcPredictionAccuracy(predPOP, unknown)
+```
+
+
+
+```{r}
+accPOP
+
+```
+
+
+
+
 
 
 # Conclusions
