@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(recommenderlab)
 library(tidyverse)
+library(reshape2)
 ```
 
 # Overview
@@ -171,11 +172,6 @@ print(svd_eval)
 
 # Testing the best predictor
 
-```{r}
-recommendation_tv <- "C:/Users/josep/OneDrive/Documents/Data-607-Projects/Final Project/tv_shows.csv"
-recomm = read.csv(recommendation_tv,header=TRUE,sep=",")
-```
-
 
 # Analyze the data
 
@@ -187,140 +183,322 @@ The data gives information that will just confuse the recommendation algorithm.
 
 Slice out all the important data.
 
-```{r}
-tv_shows_ratings = recomm[c(1,3,6,7)]
-tv_shows_ratings
-```
 
-Get rid of the / and only the rating
+
+
 
 ```{r}
-
-library(stringr)
-tv_shows_ratings$IMDb <- str_split(tv_shows_ratings$IMDb,"/")[[1]]
-```
-
-```{r}
-tv_shows_ratings$Rotten.Tomatoes <- stringr::str_extract(tv_shows_ratings$Rotten.Tomatoes, "^.{3}")
+movie1<- read.delim("C:/Users/josep/movie data/2.txt", header = FALSE, sep = ",", dec = ".")
+# add movie id
+movie1<- movie1[,c(1,2)]
+movie_id <- rep(c(1),547)
+movie1<- cbind(movie_id,movie1)
 ```
 
 ```{r}
-tv_shows_ratings$Rotten.Tomatoes <- gsub("/","",tv_shows_ratings$Rotten.Tomatoes)
+movie_id <- rep(c(2),145)
+movie2<- read.delim("C:/Users/josep/movie data/3.txt", header = FALSE, sep = ",", dec = ".")
+movie2<- movie2[,1:2]
+movie2<- cbind(movie_id,movie2)
+```
+
+
+```{r}
+movie_id <- rep(c(3),2012)
+movie3<- read.delim("C:/Users/josep/movie data/4.txt", header = FALSE, sep = ",", dec = ".")
+movie3<- movie3[,1:2]
+movie3<- cbind(movie_id,movie3)
+```
+
+
+```{r}
+movies<- rbind(movie1, movie2, movie3)
+
 ```
 
 ```{r}
-tv_shows_ratings$IMDb <- as.numeric(tv_shows_ratings$IMDb)
-tv_shows_ratings$Rotten.Tomatoes <- as.numeric(tv_shows_ratings$Rotten.Tomatoes)
-tv_shows_ratings
-```
-
-# IMDb ratings
-```{r}
-
-imdb_ratings = tv_shows_ratings[c(1,2,3)]
-
-imdb_ratings
-```
-# Apply the model
-
-```{r}
-#imdb_ratings_matrix = as(as.matrix(imdb_ratings), "realRatingMatrix")
-#min(rowCounts(imdb_ratings_matrix))
-
-# shouldn't keep n rec. items > min(rowCounts(movie_r))
-```
-```{r}
-ratingmat = dcast(imdb_ratings, X~Title, value.var = "IMDb", na.rm=FALSE)
+dim(movies)
 
 ```
 
 
 ```{r}
-imdb_ratings_matrix = as(d, "realRatingMatrix")
+ratingsMatrix <- dcast(movies, V1~movie_id, value.var = "V2" )
+
 ```
+
+```{r}
+ratingsMatrix <- as.matrix(ratingsMatrix[-c(1)])
+```
+  
+  
+```{r}
+# Convert rating matrix into a recommenderlab sparse matrix
+ratingsMatrix <- as(ratingsMatrix, "realRatingMatrix")
+
+ratingsMatrix
+```
+
+```{r}
+getRatingMatrix(ratingsMatrix)
+```   
+
+
+```{r}
+vec_ratings <- as.vector(ratingsMatrix@data)
+
+# Unique ratings
+unique(vec_ratings)
+```
+
+```{r}
+evaluation <- evaluationScheme(ratingsMatrix, method = "split", train = 0.8, given = 1)
+
+evaluation
+```
+
+```{r}
+train <- getData(evaluation, "train")
+train
+```
+
+```{r}
+test_known <- getData(evaluation, "known")
+test_known
+```
+
+```{r}
+test_unknown <- getData(evaluation, "unknown")
+test_unknown
+```
+
+```{r}
+set.seed(123)
+rec_als <- Recommender(data = train, method = "IBCF")
+
+pred_als_acr <- predict(object = rec_als, newdata = test_unknown, type = "ratings")
+pred_als_acr
+```
+
+```{r}
+model1_pred <- predict(rec_als, getData(evaluation, "known"), type = "ratings")
+model1_pred
+```
+
+
+
+```{r}
+getRatingMatrix(model1_pred)
+```
+
+```{r}
+
+test_error <- calcPredictionAccuracy(model1_pred, test_unknown)
+test_error
+```
+
+From research is is because the data is to sparce it will show NaN.
+
+
+
+-----
+Do it on Ratings Beuty
+
+```{r}
+ratings <- read.csv("C:/Users/josep/OneDrive/Documents/Data-607-Projects/Final Project/ratings_Beauty.csv", header = TRUE, sep = ",", dec = ".")
+ratings<- sample_n(ratingsBeauty, 1000)
+```
+
+```{r}
+class(ratings$UserId); class(ratings$ProductId); class(ratings$Rating); class(ratings$Timestamp)
+```
+
+```{r}
+ratings$UserId<- as.factor(ratings$UserId); 
+ratings$ProductId <- as.factor(ratings$ProductId)
+```
+
+```{r}
+ratingsMatrix <- sparseMatrix(as.integer(ratings$UserId), as.integer(ratings$ProductId), x = ratings$Rating)
+colnames(ratingsMatrix) <- levels(ratings$ProductId)
+rownames(ratingsMatrix) <- levels(ratings$UserId)
+amazon <- as(ratingsMatrix, "realRatingMatrix")
+```
+
+
+
+```{r}
+length(unique(ratingsBeauty$UserId))
+length(unique(ratingsBeauty$ProductId))
+```
+```{r}
+
+
+implode <- function(x) {
+   x<-str_replace_all(x,"\\D","") 
+    as.numeric(x)
+    
+}
+implode("c(1,2)")
+
+
+
+
+```
+```{r}
+unlisting<- function(x){
+  x<-str_c(x,collapse='')
+  as.numeric(x)
+}
+
+unlisting(c("1","2"))
+```
+
 
 
 ```{r}
 
-library(reshape2)
-d <- rbind( imdb_ratings$X, imdb_ratings$IMDb )
-imdb_ratings_matrix = as(d, "realRatingMatrix")
-getRatingMatrix(imdb_ratings_matrix)
+ratingsBeauty$UserId<- lapply(ratingsBeauty$UserId, utf8ToInt)
+ratingsBeauty$UserId<- lapply(ratingsBeauty$UserId, as.character)
+```
+
+```{r}
+ratingsBeauty$UserId<- lapply(ratingsBeauty$UserId, unlisting)
 ```
 
 
-```{r}
-eval_tv <- evaluationScheme(imdb_ratings_matrix, 
-                      method = "cross-validation", 
-                      k = 10,
-                      given = 1  , 
-                      goodRating = 5)
-eval_tv
-```
-```{r}
 
-train_movies <- getData(eval_tv, "train")
-known_movies <- getData(eval_tv, "known")
-unknown_movies <- getData(eval_tv, "unknown")
+
+```{r}
+ratingsBeauty$ProductId<- lapply(ratingsBeauty$ProductId, utf8ToInt)
+ratingsBeauty$ProductId<- lapply(ratingsBeauty$ProductId, as.character)
+```
+
+get the integers 
+
+```{r}
+ratingsBeauty$ProductId<- lapply(ratingsBeauty$ProductId, unlisting)
 ```
 
 
-```{r}
-ibcf <- 
-  train_movies %>%
-  Recommender(method = "IBCF") 
-
-ibcf_eval <- ibcf %>% 
-  predict(known_movies, type = "ratings") %>% 
-  calcPredictionAccuracy(unknown_movies)
-print(ibcf_eval)
-```
+make sure the uniue values stay unique 
 
 
 ```{r}
-pop <- 
-  train_movies %>%
-  Recommender(method = "POPULAR")
-
-pop_eval <- pop %>% 
-  predict(known_movies, type = "ratings") %>% 
-  calcPredictionAccuracy(unknown_movies)
-
-print(pop_eval)
+length(unique(ratingsBeauty$UserId))
+length(unique(ratingsBeauty$ProductId))
 ```
 ```{r}
+class(ratingsBeauty$UserId); class(ratingsBeauty$ProductId); class(ratingsBeauty$Rating); class(ratingsBeauty$Timestamp)
 
-data.frame(ratings = getRatings(train_movies)) %>%
-  ggplot(aes(ratings)) + geom_bar(width = 0.75)
 ```
 ```{r}
-t<- read.delim("C:/Users/josep/Downloads/combined_data_1.txt/combined_data_1.txt", header = FALSE, sep = ",", dec = ".")
+ratingsBeauty$UserId <- as.numeric(ratingsBeauty$UserId)
+
+ratingsBeauty$ProductId <- as.numeric(ratingsBeauty$ProductId)
+```
+
+```{r}
+sum(is.na(ratingsBeauty$UserId))
+sum(is.na(ratingsBeauty$ProductId))
+```
+```{r}
+class(df$UserId); class(df$ProductId); class(df$Rating); class(df$Timestamp)
 
 ```
 
 
 ```{r}
-t
-```
+df$UserId <- as.factor(df$UserId)
 
-```{r}
-movie_divide <- which(is.na(t), arr.ind=TRUE)
-movie_divide
-```
-```{r}
-movie_divide
-```
-
-```{r}
-#Movie 1
-t[2:548,]
-```
-```{r}
-t[548:695,]
+df$ProductId <- as.factor(df$ProductId)
 ```
 
 
 ```{r}
-t[695:2708]
+df <- as.data.frame(as.matrix(amazon@data))
+df
+```
+
+
+```{r}
+df$UserId <- rownames(df)
+df <- df %>% gather(key = ProductId, value = Rating, -UserId) %>% filter(Rating != 0)
+df
+```
+
+
+
+```{r}
+ratingsMatrix <- sparseMatrix(as.numeric(df$UserId), as.integer(df$ProductId), x = df$Rating)
+colnames(ratingsMatrix) <- levels(df$ProductId)
+rownames(ratingsMatrix) <- levels(df$UserId)
+amazon <- as(ratingsMatrix, "realRatingMatrix")
+```
+
+  
+```{r}
+# Convert rating matrix into a recommenderlab sparse matrix
+ratingsBeautyMatrix <- as(ratingsBeautyMatrix, "realRatingMatrix")
+
+ratingsBeautyMatrix
+```
+```{r}
+
+```
+
+
+```{r}
+getRatings(ratingsBeautyMatrix)
+```
+
+``
+
+```{r}
+beautyevaluation <- evaluationScheme(ratingsBeautyMatrix, method = "split", train = 0.8, given = 1, goodRating= 4)
+
+beautyevaluation
+```
+
+```{r}
+btrain <- getData(beautyevaluation, "train")
+btrain
+```
+
+```{r}
+btest_known <- getData(beautyevaluation, "known")
+btest_known
+```
+
+```{r}
+btest_unknown <- getData(beautyevaluation, "unknown")
+btest_unknown
+```
+
+```{r}
+set.seed(12345)
+rec_beauty <- Recommender(data = btrain, method = "POPULAR")
+
+pred_beauty <- predict(object = rec_beauty, newdata = btest_unknown, type = "ratings")
+pred_beauty
+```
+
+```{r}
+evaluation <- evaluationScheme(ratingsBeautyMatrix, method = "split", train = 0.8, given = 1)
+
+model1_pred <- predict(rec_beauty, getData(evaluation, "known"), type = "ratings")
+model1_pred
+```
+
+
+
+```{r}
+getRatingMatrix(ratingsBeautyMatrix[1:200,1:4])
+```
+
+```{r}
+
+test_error <- calcPredictionAccuracy(model1_pred, getData(evaluation, "unknown"))
+test_error
 ```
 

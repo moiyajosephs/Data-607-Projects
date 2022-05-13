@@ -1,0 +1,457 @@
+---
+title: "Untitled"
+author: "Moiya Josephs"
+date: "5/12/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(recommenderlab)
+library(tidyverse)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+ratings <- read.csv("C:/Users/josep/OneDrive/Documents/Data-607-Projects/Final Project/ratings_Beauty.csv", header = TRUE, sep = ",", dec = ".")
+
+```
+Check the class for each column since pare matrix and rea matrix are very partovulat
+
+```{r}
+class(ratings$UserId); class(ratings$ProductId); class(ratings$Rating); class(ratings$Timestamp)
+```
+
+
+had to change this  to factors
+```{r}
+ratings$UserId<- as.factor(ratings$UserId); 
+ratings$ProductId <- as.factor(ratings$ProductId)
+```
+
+Convert into ratings matrix
+
+```{r}
+ratingsMatrix <- sparseMatrix(as.integer(ratings$UserId), as.integer(ratings$ProductId), x = ratings$Rating)
+colnames(ratingsMatrix) <- levels(ratings$ProductId)
+rownames(ratingsMatrix) <- levels(ratings$UserId)
+amazon <- as(ratingsMatrix, "realRatingMatrix")
+```
+
+
+? keep?
+```{r}
+( amazonShort <- amazon[rowCounts(amazon) > 10, colCounts(amazon) > 30] )
+```
+
+
+```{r}
+amazonShort <- amazon[ , colCounts(amazon) > 30]
+amazonShort <- amazonShort[rowCounts(amazonShort) > 10, ]
+amazonShort
+```
+```{r}
+table(rowCounts(amazonShort))
+```
+
+```{r}
+table(colCounts(amazonShort))
+```
+
+```{r}
+( amazonShort <- amazonShort[ , colCounts(amazonShort) != 0] )
+```
+```{r}
+df <- as.data.frame(as.matrix(amazonShort@data))
+df$UserId <- rownames(df)
+df <- df %>% gather(key = ProductId, value = Rating, -UserId) %>% filter(Rating != 0)
+write.csv(df, "./ratings_final.csv", row.names = FALSE)
+```
+
+
+
+```{r}
+ratings <- read.csv("./ratings_final.csv")
+```
+
+```{r}
+ratings$UserId<- as.factor(ratings$UserId); 
+ratings$ProductId <- as.factor(ratings$ProductId)
+```
+
+
+```{r}
+ratingsMatrix <- sparseMatrix(as.integer(ratings$UserId), as.integer(ratings$ProductId), x = ratings$Rating)
+colnames(ratingsMatrix) <- levels(ratings$ProductId)
+rownames(ratingsMatrix) <- levels(ratings$UserId)
+amazon <- as(ratingsMatrix, "realRatingMatrix")
+```
+
+# Divide the data 
+
+```{r}
+set.seed(88)
+eval <- evaluationScheme(amazon, method = "split", train = 0.8, given = 5, goodRating = 3)
+train <- getData(eval, "train")
+known <- getData(eval, "known")
+unknown <- getData(eval, "unknown")
+```
+
+
+```{r}
+model_method <- "POPULAR"
+# Training
+
+modelPOP <- Recommender(train, method = model_method)
+```
+
+
+```{r}
+
+predPOP <- predict(modelPOP, newdata = known, type = "ratings")
+
+
+# Accuracy
+accPOP <- calcPredictionAccuracy(predPOP, unknown)
+```
+
+
+
+```{r}
+accPOP
+```
+
+# USBF
+
+
+# Conclusions
+
+
+
+----------------
+
+#my own dta
+
+source:
+
+python code
+
+
+```{r}
+movie1<- read.delim("C:/Users/josep/movie data/2.txt", header = FALSE, sep = ",", dec = ".")
+# add movie id
+movie1<- movie1[,c(1,2)]
+movie_id <- rep(c(1),547)
+movie1<- cbind(movie_id,movie1)
+```
+
+```{r}
+movie_id <- rep(c(2),145)
+movie2<- read.delim("C:/Users/josep/movie data/3.txt", header = FALSE, sep = ",", dec = ".")
+movie2<- movie2[,1:2]
+movie2<- cbind(movie_id,movie2)
+```
+
+
+```{r}
+movie_id <- rep(c(3),2012)
+movie3<- read.delim("C:/Users/josep/movie data/4.txt", header = FALSE, sep = ",", dec = ".")
+movie3<- movie3[,1:2]
+movie3<- cbind(movie_id,movie3)
+```
+
+
+```{r}
+movies<- rbind(movie1, movie2, movie3)
+
+```
+
+```{r}
+dim(movies)
+
+```
+
+name v1 to be userid
+
+```{r}
+ratingsMatrix <- dcast(movies, V1~movie_id, value.var = "V2" )
+
+```
+
+
+substract user id from actual data
+
+
+```{r}
+ratingsMatrix <- as.matrix(ratingsMatrix[-c(1)])
+```
+  
+  
+  make a realrating matix
+  
+```{r}
+# Convert rating matrix into a recommenderlab sparse matrix
+ratingsMatrix <- as(ratingsMatrix, "realRatingMatrix")
+
+ratingsMatrix
+```
+
+
+display it
+```{r}
+getRatingMatrix(ratingsMatrix)
+```   
+
+show ratings 
+```{r}
+getRatings(ratingsMatrix)
+```
+a more condensed look
+```{r}
+vec_ratings <- as.vector(ratingsMatrix@data)
+
+# Unique ratings
+unique(vec_ratings)
+```
+
+```{r}
+( ratingsMatrix <- ratingsMatrix[ , colCounts(ratingsMatrix) != 0] )
+
+```
+
+```{r}
+table(rowCounts(ratingsMatrix))
+```
+# divide up the data 
+
+```{r}
+evaluation <- evaluationScheme(ratingsMatrix, method = "split", train = 0.80, given = 1)
+
+evaluation
+```
+
+```{r}
+train <- getData(evaluation, "train")
+train
+```
+
+```{r}
+test_known <- getData(evaluation, "known")
+test_known
+```
+
+```{r}
+test_unknown <- getData(evaluation, "unknown")
+test_unknown
+```
+do the ame for 
+RANDOM works , LIBMF MAYBE WORKS
+
+```{r}
+set.seed(123)
+rec_als <- Recommender(data = train, method = "POPULAR")
+
+pred_als_acr <- predict(object = rec_als, newdata = test_unknown, type = "ratings")
+pred_als_acr
+```
+
+
+```{r}
+model1_pred <- predict(rec_als, newdata = test_known, type = "ratings")
+as(model1_pred ,"matrix")
+```
+
+
+```{r}
+getRatingMatrix(model1_pred)
+```
+
+```{r}
+
+test_error <- calcPredictionAccuracy(model1_pred, test_unknown)
+test_error
+```
+
+
+
+```{r}
+getModel(rec_als)
+```
+
+```{r}
+getModel(rec_als)$topN
+```
+
+The result contains two ordered top-N recommendation lists, one for each user. 
+The recommended items can be inspected as a list.
+```{r}
+recom <- predict(rec_als, test_known, n=3)
+head(as(recom,"list"))
+```
+```{r}
+recom3 <- bestN(recom, n = 3)
+head(as(recom3, "list"))
+
+```
+
+do the same step for random
+
+
+
+and svbm
+
+
+
+
+
+
+conclusion
+
+
+-------
+
+
+```{r}
+bookratings <- read.csv("C:/Users/josep/OneDrive/Documents/Data-607-Projects/Final Project/ratings.csv", header = TRUE, sep = ",", dec = ".")
+
+```
+Check the class for each column since pare matrix and rea matrix are very partovulat
+
+```{r}
+bookratings
+```
+
+
+```{r}
+class(bookratings$User.ID); class(bookratings$ISBN); class(bookratings$Book.Rating);
+```
+
+
+had to change this  to factors
+```{r}
+bookratings$ISBN <- as.factor(bookratings$ISBN)
+```
+
+Convert into ratings matrix
+
+```{r}
+ratingsMatrix <- sparseMatrix(as.integer(bookratings$User.ID), as.integer(bookratings$ISBN), x = bookratings$Book.Rating)
+colnames(ratingsMatrix) <- levels(bookratings$ISBN)
+rownames(ratingsMatrix) <- levels(bookratings$User.ID)
+books <- as(ratingsMatrix, "realRatingMatrix")
+```
+
+
+```{r}
+table(rowCounts(books))
+```
+
+```{r}
+table(colCounts(books))
+```
+
+```{r}
+( books <- books[ , colCounts(books) != 0] )
+```
+```{r}
+( books_subset <- books[rowCounts(books) > 10, colCounts(books) > 30] )
+```
+
+
+```{r}
+books_subset <- amazon[ , colCounts(books) > 30]
+books_subset <- books_subset[rowCounts(books_subset) > 10, ]
+books_subset
+```
+
+
+```{r}
+df <- as.data.frame(as.matrix(books@data))
+df$UserId <- rownames(df)
+df <- df %>% gather(key = ISBN, value = Rating, -User.ID) %>% filter(Rating != 0)
+write.csv(df, "./books_final.csv", row.names = FALSE)
+```
+
+
+
+```{r}
+ratings <- read.csv("./ratings_final.csv")
+```
+
+```{r}
+ratings$UserId<- as.factor(ratings$UserId); 
+ratings$ProductId <- as.factor(ratings$ProductId)
+```
+
+
+```{r}
+ratingsMatrix <- sparseMatrix(as.integer(ratings$UserId), as.integer(ratings$ProductId), x = ratings$Rating)
+colnames(ratingsMatrix) <- levels(ratings$ProductId)
+rownames(ratingsMatrix) <- levels(ratings$UserId)
+amazon <- as(ratingsMatrix, "realRatingMatrix")
+```
+
+# Divide the data 
+
+```{r}
+set.seed(88)
+eval <- evaluationScheme(amazon, method = "split", train = 0.8, given = 5, goodRating = 3)
+train <- getData(eval, "train")
+known <- getData(eval, "known")
+unknown <- getData(eval, "unknown")
+```
+
+
+```{r}
+model_method <- "POPULAR"
+# Training
+
+modelPOP <- Recommender(train, method = model_method)
+```
+
+
+```{r}
+
+predPOP <- predict(modelPOP, newdata = known, type = "ratings")
+
+
+# Accuracy
+accPOP <- calcPredictionAccuracy(predPOP, unknown)
+```
+
+
+
+```{r}
+accPOP
+```
+
+# USBF
+
+
+# Conclusions
+
+
+
+
+
+references
+
+
+https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset?select=Ratings.csv
+
+https://www.kaggle.com/datasets/skillsmuggler/amazon-ratings
+
+data : https://www.kaggle.com/code/laowingkin/netflix-movie-recommendation/data
+
+https://www.data-mania.com/blog/how-to-build-a-recommendation-engine-in-r/
+
+https://github.com/BrandonHoeft/Recommender-System-R-Tutorial/blob/master/RecommenderLab_Tutorial.md
+
+
+
+https://cran.r-project.org/web/packages/recommenderlab/vignettes/recommenderlab.pdf
