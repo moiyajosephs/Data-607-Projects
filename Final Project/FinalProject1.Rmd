@@ -43,6 +43,10 @@ rownames(ratingsMatrix) <- levels(ratings$UserId)
 amazon <- as(ratingsMatrix, "realRatingMatrix")
 ```
 
+```{r}
+getRatingMatrix(amazon)[1:10,1:4]
+```
+
 
 ? keep?
 ```{r}
@@ -330,6 +334,9 @@ bookratings
 ```{r}
 class(bookratings$User.ID); class(bookratings$ISBN); class(bookratings$Book.Rating);
 ```
+```{r}
+booksratings <- sample_n(bookratings, 10000)
+```
 
 
 had to change this  to factors
@@ -346,9 +353,14 @@ rownames(ratingsMatrix) <- levels(bookratings$User.ID)
 books <- as(ratingsMatrix, "realRatingMatrix")
 ```
 
+```{r}
+getRatingMatrix(books)[1:10,1:4]
+```
+
+
 
 ```{r}
-table(rowCounts(books))
+(rowCounts(books))
 ```
 
 ```{r}
@@ -358,49 +370,32 @@ table(colCounts(books))
 ```{r}
 ( books <- books[ , colCounts(books) != 0] )
 ```
-```{r}
-( books_subset <- books[rowCounts(books) > 10, colCounts(books) > 30] )
-```
+
 
 
 ```{r}
-books_subset <- amazon[ , colCounts(books) > 30]
+books_subset <- books[ , colCounts(books) > 30]
 books_subset <- books_subset[rowCounts(books_subset) > 10, ]
 books_subset
 ```
 
 
 ```{r}
-df <- as.data.frame(as.matrix(books@data))
-df$UserId <- rownames(df)
-df <- df %>% gather(key = ISBN, value = Rating, -User.ID) %>% filter(Rating != 0)
-write.csv(df, "./books_final.csv", row.names = FALSE)
-```
 
-
-
-```{r}
-ratings <- read.csv("./ratings_final.csv")
+getRatingMatrix(books_subset)[1:10,1:4]
 ```
 
 ```{r}
-ratings$UserId<- as.factor(ratings$UserId); 
-ratings$ProductId <- as.factor(ratings$ProductId)
+getRatings(books_subset)
 ```
 
-
-```{r}
-ratingsMatrix <- sparseMatrix(as.integer(ratings$UserId), as.integer(ratings$ProductId), x = ratings$Rating)
-colnames(ratingsMatrix) <- levels(ratings$ProductId)
-rownames(ratingsMatrix) <- levels(ratings$UserId)
-amazon <- as(ratingsMatrix, "realRatingMatrix")
-```
 
 # Divide the data 
+Good rating is 5, the ratings go all the way up to 10
 
 ```{r}
 set.seed(88)
-eval <- evaluationScheme(amazon, method = "split", train = 0.8, given = 5, goodRating = 3)
+eval <- evaluationScheme(books_subset, method = "split", train = 0.8, given = 5, goodRating = 5)
 train <- getData(eval, "train")
 known <- getData(eval, "known")
 unknown <- getData(eval, "unknown")
@@ -431,6 +426,59 @@ accPOP
 ```
 
 # USBF
+
+
+```{r}
+set.seed(88)
+eval <- evaluationScheme(books_subset, method = "split", train = 0.8, given = 5, goodRating = 5)
+train <- getData(eval, "train")
+known <- getData(eval, "known")
+unknown <- getData(eval, "unknown")
+```
+
+
+```{r}
+model_method <- "UBCF"
+# Training
+
+
+model_params <- list(method = "cosine",
+                     nn = 10, # find each user's 10 most similar users.
+                     sample = FALSE, # already did this.
+                     normalize = "center")
+
+modelPOP <-  getData(eval, "train") %>% Recommender( method = model_method, parameter= model_params)
+```
+
+
+```{r}
+
+predPOP <- predict(modelPOP, newdata = known, type = "ratings")
+
+```
+
+
+Takes forever
+# Accuracy
+```{r}
+accPOP <- calcPredictionAccuracy(predPOP, unknown)
+```
+
+
+
+```{r}
+accPOP
+```
+
+
+
+```{r}
+
+```
+
+
+
+
 
 
 # Conclusions
