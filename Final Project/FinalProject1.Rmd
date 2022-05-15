@@ -9,112 +9,175 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(recommenderlab)
 library(tidyverse)
+library(reshape2)
 ```
 
-## R Markdown
+# Overview
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+For the final project I took three data sets, all taken from Kaggle and used `recommenderlab` library on the data sets. Each data set allowed me to test the different recommendation methods and calculating the accuracy for each one/
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+The first data set is:
+
+- Beauty Ratings from Amazon
+- Netflix Ratings
+- Book Ratings
 
 
 
-Original rating is 2,023,070 values. 
+# Beauty Recommendation
+
+For this part of my project I used the Amazon Beauty Rating data set from ()[]. The data set has over 2 Million customer reviews and ratings of Beauty related products sold on their website. It isa subset of all their product reviews that span from May 1996 - July 2014.
+
+The Schema
+
+- UserId (Customer Identification)  
+- the product ASIN (Amazon's unique product identification code for each product)  
+- Ratings (1-5 based on customer satisfaction)   
+- Timestamp (in UNIX time)  
+
+
+## Reading the Data
+
 ```{r}
 ratings <- read.csv("C:/Users/josep/OneDrive/Documents/Data-607-Projects/Final Project/ratings_Beauty.csv", header = TRUE, sep = ",", dec = ".")
 
 ```
 
+```{r}
+summary(ratings)
+```
 
 
 
-Check the class for each column since pare matrix and real matrix are very particular.
+## Formatting the data
+
+
+To make the dataframed into something a recommenderlab function can use, I had to go through a number of steps first.
+
+### Converting to factors
+First, I checked the class for each column since sparce matrix and real matrix are very particular.
 
 ```{r}
 class(ratings$UserId); class(ratings$ProductId); class(ratings$Rating); class(ratings$Timestamp)
 ```
 
+Changed the character columns to factors.
 
-had to change this  to factors
 ```{r}
 ratings$UserId<- as.factor(ratings$UserId); 
 ratings$ProductId <- as.factor(ratings$ProductId)
 ```
 
-Convert into ratings matrix
+### Build a Sparce matrix
+
+Convert into ratings matrix. This is done first by using the sparse matrix function. The rows will be the integer values of the `UserId` and the columns will be the `ProductId`. The x, values will be the ratings. 
 
 ```{r}
 ratingsMatrix <- sparseMatrix(as.integer(ratings$UserId), as.integer(ratings$ProductId), x = ratings$Rating)
+```
+
+Next use the `colnames` and `rownames` function on the matrix so that each cell is properly labelled.
+```{r}
 colnames(ratingsMatrix) <- levels(ratings$ProductId)
 rownames(ratingsMatrix) <- levels(ratings$UserId)
-amazon <- as(ratingsMatrix, "realRatingMatrix") #change to beauty
+```
+
+### Make a realRatingMatrix
+
+Save the sparse matrix as a `realRatingMatrix`
+```{r}
+beauty <- as(ratingsMatrix, "realRatingMatrix") #change to beauty
+```
+
+
+## Working with the relRatingMatrix
+
+With the `getRatingMatrix()` function we can see the resulting matrix from the steps above.
+
+```{r}
+getRatingMatrix(beauty)[1:10,1:4]
+```
+
+The `getRatings()` function allows us to see the just the ratings. It is also a good way to check if the realRatingMatrix identified the right numbers as ratings.
+
+```{r}
+getRatings(beauty)
+```
+
+Representing visually
+
+```{r}
+data.frame(ratings = getRatings(beauty)) %>%
+  ggplot(aes(ratings)) + geom_bar(width = 0.75)
+```
+The graph above shows that 5 star ratings are the most frequently chosen rating for the products.
+
+
+## Reddying the data for recommender models
+
+The rowcounts/colcounts function allows us to view the unique number of unique row/ col values . This is important with a ratingmatrix and for recommendation system because there are some users/products with only one rating. This is not enough data to make predictions on.
+
+
+```{r}
+table(rowCounts(beauty))
 ```
 
 ```{r}
-getRatingMatrix(amazon)[1:10,1:4]
+table(colCounts(beauty))
+```
+
+Limit the matrix to only include values with more than 30 column count and 10 row counts. 
+```{r}
+beauty <- beauty[,colCounts(beauty) >30]
 ```
 
 ```{r}
-table(rowCounts(amazon))
-```
-
-```{r}
-table(colCounts(amazon))
-```
-
-
-```{r}
-getRatings(amazon)
-```
-
-
-
-```{r}
-getRatingMatrix(amazon)[1:10,1:4]
-```
-
-```{r}
-amazon <- amazon[,colCounts(amazon) >30]
-```
-
-```{r}
-amazon <- amazon[rowCounts(amazon) > 10, ]
-amazon
+beauty <- beauty[rowCounts(beauty) > 10, ]
 ```
 
 
 ```{r}
-( amazon <- amazon[ , colCounts(amazon) != 0] )
+getRatingMatrix(beauty)[1:10,1:4]
+```
+```{r}
+data.frame(ratings = getRatings(beauty)) %>%
+  ggplot(aes(ratings)) + geom_bar(width = 0.75)
 ```
 
+As we can see the amount of ratings has decreased but ratings = 5 are still the most popular.
+Now the data is ready for recommendation model
 
 # Build the model
 
+To use  a machine learning model we need to divide the data into training, known and unknown data. We will build the model on training data, and predict on the known data. Next we can calculate accuracy with the unknown data.
 
+
+Below I decided on dividing the data so that 75% of the data is training data. I also need to note the minimum amount of rowcounts, the number of occurrences of users, available. This is important for later.
 ```{r}
 train_proportion <- .75
-min(rowCounts(amazon))
+min(rowCounts(beauty))
 ```
-
+Below the `given` value is what we found as the minimum rowcounts. In the `evaluationscheme`, , the given parameter cannot be greater than the minimum rowcounts. 
+The `goodrating` value gives the model the rating we should be considering as good. Since the data ratings ranges from 1-5 , I indicate that a good rating is anything that is 4 or above. 
 
 
 ```{r}
-items_per_test_user_keep <- 11
+give <- 11
 # What's a good rating for a binary split?
-good_threshold <- 4
+goodrating <- 4
 ```
 
 ```{r}
 # Building a Recommender System with R by Gorakala and Usuelli. Ch.4 pp 77 - 83
 set.seed(12345)
-beauty_evaluation <- amazon %>% evaluationScheme(method = 'split', # single train/test split
+beauty_evaluation <- beauty %>% evaluationScheme(method = 'split', # single train/test split
                    train = train_proportion, # proportion of rows to train.
-                   given = items_per_test_user_keep, # shouldn't keep n rec. items > min(rowCounts(movie_r))
-                   goodRating = good_threshold, # for binary classifier analysis.
+                   given = give, # shouldn't keep n rec. items > min(rowCounts(movie_r))
+                   goodRating = goodrating, # for binary classifier analysis.
                    k = 1)
 ```
 
-
+`Modelparams` builds the parameters for the recommended function. The method in the parameters can be cosine, ,. nn indicates to find the n most similar users. And we can also sample our data or normalized.I normalized thed data since user rating can be biased, normalizing th data will help make it fair. The example I used to make the modelparams is from the tutorial []().
 
 ```{r}
 # Building a Recommender System with R by Gorakala and Usuelli. Ch.4 pp 84
@@ -122,9 +185,6 @@ model_params <- list(method = "cosine",
                      nn = 10, # find each user's 10 most similar users.
                      sample = FALSE, # already did this.
                      normalize = "center")
-
-model1 <- getData(beauty_evaluation, "train") %>% #only fit on the 75% training data.
-  Recommender(method = "UBCF", parameter = model_params)
 ```
 
 
@@ -162,37 +222,29 @@ accPOP <- calcPredictionAccuracy(predPOP, unknown)
 accPOP
 ```
 
-# USBF
-
-```{r}
-set.seed(88)
-train <- getData(beauty_evaluation, "train")
-known <- getData(beauty_evaluation, "known")
-unknown <- getData(beauty_evaluation, "unknown")
-```
-
+# Random 
 
 ```{r}
 model_method <- "RANDOM"
 # Training
 
-modelPOP <- Recommender(train, method = model_method)
+modelRND <- Recommender(train, method = model_method)
 ```
 
 
 ```{r}
 
-predPOP <- predict(modelPOP, newdata = known, type = "ratings")
+predRND <- predict(modelRND, newdata = known, type = "ratings")
 
 
 # Accuracy
-accPOP <- calcPredictionAccuracy(predPOP, unknown)
+accRND <- calcPredictionAccuracy(predRND, unknown)
 ```
 
 
 
 ```{r}
-accPOP
+accRND
 
 ```
 
@@ -203,16 +255,24 @@ accPOP
 
 # Conclusions
 
+In conclusion the popular method was able to predict with a better accuracy than the random method.
 
 
 ----------------
 
 #my own dta
 
-source:
+Netflix data was a little more difficult to get in the format needed to make the recommendation engine. Each movie was listed in the below format on 4 different files. 
+Movie:
+customerID, Rating, Time
+There were # movies across multiple files.
 
-python code
+To get each individual movie I made a python script that will read the text file and at each :, this will indicate a new movies ratings. With each new movie it will become its own file. With future iterations of this project I would like to use all the files, but for this project I will test the first 10 movies. This limits the scale and accuracy of the recommendation engine since the training data is a much smaller subset of the larger one. 
 
+## Reading in each movie
+
+
+Fist I read the text files individually. Next I remove the timestamp column and add in the movie id as a column, so we know which rating belongs to which movie. 
 
 ```{r}
 movie1<- read.delim("C:/Users/josep/movie data/2.txt", header = FALSE, sep = ",", dec = ".")
@@ -237,6 +297,7 @@ movie3<- movie3[,1:2]
 movie3<- cbind(movie_id,movie3)
 ```
 
+Using rbind, I can combine all the movies into one. 
 
 ```{r}
 movies<- rbind(movie1, movie2, movie3)
@@ -248,7 +309,7 @@ dim(movies)
 
 ```
 
-name v1 to be userid
+`Dcast` Allows us to pivot the user id to the rows and the mvoie id to the columns, making it into a matrix like structure. 
 
 ```{r}
 ratingsMatrix <- dcast(movies, V1~movie_id, value.var = "V2" )
@@ -256,7 +317,7 @@ ratingsMatrix <- dcast(movies, V1~movie_id, value.var = "V2" )
 ```
 
 
-substract user id from actual data
+Again we subtract the user id from actual data, since it will confuse `recommenderlab` functions and be counted as a rating.
 
 
 ```{r}
@@ -264,7 +325,7 @@ ratingsMatrix <- as.matrix(ratingsMatrix[-c(1)])
 ```
   
   
-  make a realrating matix
+Now we can coerce the matrix into a `realRatingMatrix`.
   
 ```{r}
 # Convert rating matrix into a recommenderlab sparse matrix
@@ -272,18 +333,16 @@ ratingsMatrix <- as(ratingsMatrix, "realRatingMatrix")
 
 ratingsMatrix
 ```
-
-
-display it
+Now to display the ratings matrix.
 ```{r}
-getRatingMatrix(ratingsMatrix)
+getRatingMatrix(ratingsMatrix)[1:10,1:3]
 ```   
 
 show ratings 
 ```{r}
 getRatings(ratingsMatrix)
 ```
-a more condensed look
+A more condensed look of the ratings.
 ```{r}
 vec_ratings <- as.vector(ratingsMatrix@data)
 
@@ -299,30 +358,69 @@ unique(vec_ratings)
 ```{r}
 table(rowCounts(ratingsMatrix))
 ```
-# divide up the data 
 
 ```{r}
-evaluation <- evaluationScheme(ratingsMatrix, method = "split", train = 0.80, given = 1)
+min(rowCounts(ratingsMatrix))
+```
 
-evaluation
+
+## Divide up the data 
+
+
+```{r}
+net_evaluation <- ratingsMatrix %>% evaluationScheme(method = "split", train = 0.80, given = 1)
+
+net_evaluation
 ```
 
 ```{r}
-train <- getData(evaluation, "train")
+model_params <- list(method="cosine", 
+                    nn = 5,
+                    sample = FALSE,
+                    normalize = "center")
+
+```
+
+## Divide the Data
+
+```{r}
+train <- getData(net_evaluation, "train")
 train
 ```
 
 ```{r}
-test_known <- getData(evaluation, "known")
+test_known <- getData(net_evaluation, "known")
 test_known
 ```
 
 ```{r}
-test_unknown <- getData(evaluation, "unknown")
+test_unknown <- getData(net_evaluation, "unknown")
 test_unknown
 ```
 do the ame for 
 RANDOM works , LIBMF MAYBE WORKS
+
+
+
+
+```{r}
+model_method <- "POPULAR"
+# Training
+
+modelPOP <- Recommender(train, method = model_method)
+```
+
+
+```{r}
+
+predPOP <- predict(modelPOP, newdata = known, type = "ratings")
+
+
+# Accuracy
+accPOP <- calcPredictionAccuracy(predPOP, unknown)
+```
+
+
 
 ```{r}
 set.seed(123)
@@ -365,6 +463,7 @@ The recommended items can be inspected as a list.
 recom <- predict(rec_als, test_known, n=3)
 head(as(recom,"list"))
 ```
+
 ```{r}
 recom3 <- bestN(recom, n = 3)
 head(as(recom3, "list"))
