@@ -31,7 +31,7 @@ The first data set is:
 
 # Beauty Recommendation
 
-For this part of my project I used the Amazon Beauty Rating data set from ()[]. The data set has over 2 Million customer reviews and ratings of Beauty related products sold on their website. It isa subset of all their product reviews that span from May 1996 - July 2014.
+For this part of my project I used the Amazon Beauty Rating data set from Kaggle. The data set has over 2 Million customer reviews and ratings of Beauty related products sold on their website. It isa subset of all their product reviews that span from May 1996 - July 2014.
 
 The Schema
 
@@ -44,7 +44,7 @@ The Schema
 ## Reading the Data
 
 ```{r}
-ratings <- read.csv("C:/Users/josep/OneDrive/Documents/Data-607-Projects/Final Project/ratings_Beauty.csv", header = TRUE, sep = ",", dec = ".")
+ratings <- read.csv("https://github.com/moiyajosephs/Data-607-Projects/blob/main/Final%20Project/ratings_Beauty.csv", header = TRUE, sep = ",", dec = ".")
 
 ```
 
@@ -286,10 +286,6 @@ accRND
 ```
 
 
-
-
-
-
 ## Conclusions
 
 In conclusion the popular method was able to predict with a better accuracy than the random method.
@@ -312,7 +308,7 @@ To get each individual movie I made a python script that will read the text file
 Fist I read the text files individually. Next I remove the timestamp column and add in the movie id as a column, so we know which rating belongs to which movie. 
 
 ```{r}
-movie1<- read.delim("C:/Users/josep/movie data/2.txt", header = FALSE, sep = ",", dec = ".")
+movie1<- read.delim("https://raw.githubusercontent.com/moiyajosephs/Data-607-Projects/main/Final%20Project/movie-data/2.txt", header = FALSE, sep = ",", dec = ".")
 # add movie id
 movie1<- movie1[,c(1,2)]
 movie_id <- rep(c(1),547)
@@ -321,7 +317,7 @@ movie1<- cbind(movie_id,movie1)
 
 ```{r}
 movie_id <- rep(c(2),145)
-movie2<- read.delim("C:/Users/josep/movie data/3.txt", header = FALSE, sep = ",", dec = ".")
+movie2<- read.delim("https://raw.githubusercontent.com/moiyajosephs/Data-607-Projects/main/Final%20Project/movie-data/3.txt", header = FALSE, sep = ",", dec = ".")
 movie2<- movie2[,1:2]
 movie2<- cbind(movie_id,movie2)
 ```
@@ -329,7 +325,7 @@ movie2<- cbind(movie_id,movie2)
 
 ```{r}
 movie_id <- rep(c(3),2012)
-movie3<- read.delim("C:/Users/josep/movie data/4.txt", header = FALSE, sep = ",", dec = ".")
+movie3<- read.delim("https://raw.githubusercontent.com/moiyajosephs/Data-607-Projects/main/Final%20Project/movie-data/4.txt", header = FALSE, sep = ",", dec = ".")
 movie3<- movie3[,1:2]
 movie3<- cbind(movie_id,movie3)
 ```
@@ -376,10 +372,7 @@ Now to display the ratings matrix.
 getRatingMatrix(ratingsMatrix)[1:10,1:3]
 ```   
 
-show ratings 
-```{r}
-getRatings(ratingsMatrix)
-```
+
 A more condensed look of the ratings.
 ```{r}
 vec_ratings <- as.vector(ratingsMatrix@data)
@@ -557,7 +550,7 @@ LIBMF and popular was more accurate than the RANDOM method.
 
 
 ```{r}
-bookratings <- read.csv("C:/Users/josep/OneDrive/Documents/Data-607-Projects/Final Project/ratings.csv", header = TRUE, sep = ",", dec = ".")
+bookratings <- read.csv("https://raw.githubusercontent.com/moiyajosephs/Data-607-Projects/main/Final%20Project/Ratings.csv", header = TRUE, sep = ",", dec = ".")
 
 ```
 Check the class for each column since pare matrix and rea matrix are very partovulat
@@ -647,6 +640,7 @@ known <- getData(eval, "known")
 unknown <- getData(eval, "unknown")
 ```
 
+### Popular
 
 ```{r}
 model_method <- "POPULAR"
@@ -672,7 +666,7 @@ accPOP
 ```
 
 
-Finding the top book:
+### Finding the top book:
 
 
 ```{r}
@@ -700,7 +694,7 @@ head(as(recom3, "list"))
 
 
 
-# USBF
+### USBF
 
 ```{r}
 model_method <- "UBCF"
@@ -725,12 +719,13 @@ predUBCF <- predict(modelUBCF, newdata = known, type = "ratings")
 Using USBF this method takes the longest time to run.
 
 
-# Accuracy
+### Accuracy
 ```{r}
 accUBCF <- calcPredictionAccuracy(predUBCF, unknown)
 ```
 
-
+## Conclusions
+This was interesting to use to see which items would be the topN. Future iteratoins of the project could search for the item by the idea. This could be something useful for a business. 
 
 ```{r}
 accUBCF
