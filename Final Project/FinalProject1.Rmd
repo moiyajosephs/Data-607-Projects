@@ -2,7 +2,12 @@
 title: "Untitled"
 author: "Moiya Josephs"
 date: "5/12/2022"
-output: html_document
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+    toc_float: true
+    toc_depth: 4
 ---
 
 ```{r setup, include=FALSE}
@@ -44,6 +49,11 @@ ratings <- read.csv("C:/Users/josep/OneDrive/Documents/Data-607-Projects/Final P
 ```
 
 ```{r}
+head(ratings)
+```
+
+
+```{r}
 summary(ratings)
 ```
 
@@ -52,7 +62,7 @@ summary(ratings)
 ## Formatting the data
 
 
-To make the dataframed into something a recommenderlab function can use, I had to go through a number of steps first.
+To make the dataframe into something a `recommenderlab` function can use, I had to go through a number of steps first.
 
 ### Converting to factors
 First, I checked the class for each column since sparce matrix and real matrix are very particular.
@@ -90,7 +100,7 @@ beauty <- as(ratingsMatrix, "realRatingMatrix") #change to beauty
 ```
 
 
-## Working with the relRatingMatrix
+## Working with the realRatingMatrix
 
 With the `getRatingMatrix()` function we can see the resulting matrix from the steps above.
 
@@ -100,9 +110,6 @@ getRatingMatrix(beauty)[1:10,1:4]
 
 The `getRatings()` function allows us to see the just the ratings. It is also a good way to check if the realRatingMatrix identified the right numbers as ratings.
 
-```{r}
-getRatings(beauty)
-```
 
 Representing visually
 
@@ -113,7 +120,7 @@ data.frame(ratings = getRatings(beauty)) %>%
 The graph above shows that 5 star ratings are the most frequently chosen rating for the products.
 
 
-## Reddying the data for recommender models
+## Readying the data for recommender models
 
 The rowcounts/colcounts function allows us to view the unique number of unique row/ col values . This is important with a ratingmatrix and for recommendation system because there are some users/products with only one rating. This is not enough data to make predictions on.
 
@@ -147,7 +154,7 @@ data.frame(ratings = getRatings(beauty)) %>%
 As we can see the amount of ratings has decreased but ratings = 5 are still the most popular.
 Now the data is ready for recommendation model
 
-# Build the model
+## Build the model
 
 To use  a machine learning model we need to divide the data into training, known and unknown data. We will build the model on training data, and predict on the known data. Next we can calculate accuracy with the unknown data.
 
@@ -189,7 +196,7 @@ model_params <- list(method = "cosine",
 
 
 
-# Divide the data
+## Divide the data
 
 ```{r}
 set.seed(88)
@@ -197,6 +204,8 @@ train <- getData(beauty_evaluation, "train")
 known <- getData(beauty_evaluation, "known")
 unknown <- getData(beauty_evaluation, "unknown")
 ```
+
+### Popular
 
 
 ```{r}
@@ -237,7 +246,7 @@ getModel(modelPOP)$topN
 The result contains two ordered top-N recommendation lists, one for each user. 
 The recommended items can be inspected as a list.
 ```{r}
-recom <- predict(modelPOP, test_known, n=3)
+recom <- predict(modelPOP, known, n=3)
 head(as(recom,"list"))
 ```
 
@@ -250,7 +259,7 @@ head(as(recom3, "list"))
 
 
 
-# Random 
+### Random 
 
 ```{r}
 model_method <- "RANDOM"
@@ -281,7 +290,7 @@ accRND
 
 
 
-# Conclusions
+## Conclusions
 
 In conclusion the popular method was able to predict with a better accuracy than the random method.
 
@@ -352,7 +361,8 @@ Again we subtract the user id from actual data, since it will confuse `recommend
 ratingsMatrix <- as.matrix(ratingsMatrix[-c(1)])
 ```
   
-  
+## Real Rating Matrix
+
 Now we can coerce the matrix into a `realRatingMatrix`.
   
 ```{r}
@@ -416,7 +426,6 @@ model_params <- list(method="cosine",
 
 ```
 
-## Divide the Data
 
 ```{r}
 train <- getData(net_evaluation, "train")
@@ -458,7 +467,7 @@ accPOP <- calcPredictionAccuracy(predPOP, test_unknown)
 accPOP
 ```
 
-## Get the top N
+### Get the top N
 
 With popular recommendation model we can also distinguish the top n items from the data set.
 
@@ -510,7 +519,7 @@ accRND <- calcPredictionAccuracy(predRND, test_unknown)
 accRND
 ```
 
-# libmf
+### LIBMF
 
 
 
@@ -554,7 +563,7 @@ bookratings <- read.csv("C:/Users/josep/OneDrive/Documents/Data-607-Projects/Fin
 Check the class for each column since pare matrix and rea matrix are very partovulat
 
 ```{r}
-bookratings
+head(bookratings)
 ```
 
 
@@ -627,7 +636,7 @@ data.frame(ratings = getRatings(books_subset)) %>%
 ```
 
 
-# Divide the data 
+## Divide the data 
 Good rating is 5, the ratings go all the way up to 10
 
 ```{r}
@@ -745,16 +754,15 @@ In conclusion, I was able to learns lot about `recommenderlab` and what it would
 # References
 
 
-https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset?select=Ratings.csv
+[Book Ratings](https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset?select=Ratings.csv)
 
-https://www.kaggle.com/datasets/skillsmuggler/amazon-ratings
+[Beauty Ratings](https://www.kaggle.com/datasets/skillsmuggler/amazon-ratings)
 
-https://www.kaggle.com/code/laowingkin/netflix-movie-recommendation/data
+[Netflix Movie Ratings](https://www.kaggle.com/code/laowingkin/netflix-movie-recommendation/data)
 
-https://www.data-mania.com/blog/how-to-build-a-recommendation-engine-in-r/
+[How to Build a Recommendation Engine in R](https://www.data-mania.com/blog/how-to-build-a-recommendation-engine-in-r/)
 
-https://github.com/BrandonHoeft/Recommender-System-R-Tutorial/blob/master/RecommenderLab_Tutorial.md
+[Recommender System Tutorial](https://github.com/BrandonHoeft/Recommender-System-R-Tutorial/blob/master/RecommenderLab_Tutorial.md]()
 
 
-
-https://cran.r-project.org/web/packages/recommenderlab/vignettes/recommenderlab.pdf
+[Recommender Lab Documentation](https://cran.r-project.org/web/packages/recommenderlab/vignettes/recommenderlab.pdf)
