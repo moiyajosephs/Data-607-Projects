@@ -222,6 +222,34 @@ accPOP <- calcPredictionAccuracy(predPOP, unknown)
 accPOP
 ```
 
+Get the top beatuy products
+
+
+
+```{r}
+getModel(modelPOP)
+```
+
+```{r}
+getModel(modelPOP)$topN
+```
+
+The result contains two ordered top-N recommendation lists, one for each user. 
+The recommended items can be inspected as a list.
+```{r}
+recom <- predict(modelPOP, test_known, n=3)
+head(as(recom,"list"))
+```
+
+```{r}
+recom3 <- bestN(recom, n = 3)
+head(as(recom3, "list"))
+
+```
+
+
+
+
 # Random 
 
 ```{r}
@@ -260,7 +288,7 @@ In conclusion the popular method was able to predict with a better accuracy than
 
 ----------------
 
-#my own dta
+# Netflix
 
 Netflix data was a little more difficult to get in the format needed to make the recommendation engine. Each movie was listed in the below format on 4 different files. 
 Movie:
@@ -309,7 +337,7 @@ dim(movies)
 
 ```
 
-`Dcast` Allows us to pivot the user id to the rows and the mvoie id to the columns, making it into a matrix like structure. 
+`Dcast` Allows us to pivot the user id to the rows and the movie id to the columns, making it into a matrix like structure. 
 
 ```{r}
 ratingsMatrix <- dcast(movies, V1~movie_id, value.var = "V2" )
@@ -349,6 +377,13 @@ vec_ratings <- as.vector(ratingsMatrix@data)
 # Unique ratings
 unique(vec_ratings)
 ```
+
+```{r}
+data.frame(ratings = getRatings(ratingsMatrix)) %>%
+  ggplot(aes(ratings)) + geom_bar(width = 0.75)
+```
+
+
 
 ```{r}
 ( ratingsMatrix <- ratingsMatrix[ , colCounts(ratingsMatrix) != 0] )
@@ -397,10 +432,9 @@ test_known
 test_unknown <- getData(net_evaluation, "unknown")
 test_unknown
 ```
-do the ame for 
-RANDOM works , LIBMF MAYBE WORKS
 
 
+### Popular
 
 
 ```{r}
@@ -413,54 +447,33 @@ modelPOP <- Recommender(train, method = model_method)
 
 ```{r}
 
-predPOP <- predict(modelPOP, newdata = known, type = "ratings")
+predPOP <- predict(modelPOP, test_known, type = "ratings")
 
 
 # Accuracy
-accPOP <- calcPredictionAccuracy(predPOP, unknown)
-```
-
-
-
-```{r}
-set.seed(123)
-rec_als <- Recommender(data = train, method = "POPULAR")
-
-pred_als_acr <- predict(object = rec_als, newdata = test_unknown, type = "ratings")
-pred_als_acr
-```
-
-
-```{r}
-model1_pred <- predict(rec_als, newdata = test_known, type = "ratings")
-as(model1_pred ,"matrix")
-```
-
-
-```{r}
-getRatingMatrix(model1_pred)
+accPOP <- calcPredictionAccuracy(predPOP, test_unknown)
 ```
 
 ```{r}
-
-test_error <- calcPredictionAccuracy(model1_pred, test_unknown)
-test_error
+accPOP
 ```
 
+## Get the top N
 
+With popular recommendation model we can also distinguish the top n items from the data set.
 
 ```{r}
-getModel(rec_als)
+getModel(modelPOP)
 ```
 
 ```{r}
-getModel(rec_als)$topN
+getModel(modelPOP)$topN
 ```
 
 The result contains two ordered top-N recommendation lists, one for each user. 
 The recommended items can be inspected as a list.
 ```{r}
-recom <- predict(rec_als, test_known, n=3)
+recom <- predict(modelPOP, test_known, n=3)
 head(as(recom,"list"))
 ```
 
@@ -470,21 +483,68 @@ head(as(recom3, "list"))
 
 ```
 
-do the same step for random
-
-
-
-and svbm
 
 
 
 
+### Random
+
+```{r}
+model_method <- "RANDOM"
+# Training
+
+modelRND <- Recommender(train, method = model_method)
+```
 
 
-conclusion
+```{r}
+
+predRND <- predict(modelRND, test_known, type = "ratings")
+
+
+# Accuracy
+accRND <- calcPredictionAccuracy(predRND, test_unknown)
+```
+
+```{r}
+accRND
+```
+
+# libmf
+
+
+
+```{r}
+model_method <- "LIBMF"
+# Training
+
+modelLIBMF <- Recommender(train, method = model_method)
+```
+
+
+```{r}
+
+predLIBMF <- predict(modelLIBMF, test_known, type = "ratings")
+
+
+# Accuracy
+accLIBMF <- calcPredictionAccuracy(predLIBMF, test_unknown)
+```
+
+```{r}
+accLIBMF
+```
+
+
+## conclusion
+
+
+LIBMF and popular was more accurate than the RANDOM method. 
 
 
 -------
+
+# Book ratings
 
 
 ```{r}
@@ -501,6 +561,8 @@ bookratings
 ```{r}
 class(bookratings$User.ID); class(bookratings$ISBN); class(bookratings$Book.Rating);
 ```
+The dataset is very large so i will take only 10000 ratings.
+
 ```{r}
 booksratings <- sample_n(bookratings, 10000)
 ```
@@ -524,6 +586,10 @@ books <- as(ratingsMatrix, "realRatingMatrix")
 getRatingMatrix(books)[1:10,1:4]
 ```
 
+```{r}
+data.frame(ratings = getRatings(books)) %>%
+  ggplot(aes(ratings)) + geom_bar(width = 0.75)
+```
 
 
 ```{r}
@@ -554,6 +620,10 @@ getRatingMatrix(books_subset)[1:10,1:4]
 
 ```{r}
 getRatings(books_subset)
+```
+```{r}
+data.frame(ratings = getRatings(books_subset)) %>%
+  ggplot(aes(ratings)) + geom_bar(width = 0.75)
 ```
 
 
@@ -592,17 +662,36 @@ accPOP <- calcPredictionAccuracy(predPOP, unknown)
 accPOP
 ```
 
-# USBF
+
+Finding the top book:
 
 
 ```{r}
-set.seed(88)
-eval <- evaluationScheme(books_subset, method = "split", train = 0.8, given = 5, goodRating = 5)
-train <- getData(eval, "train")
-known <- getData(eval, "known")
-unknown <- getData(eval, "unknown")
+getModel(modelPOP)
 ```
 
+```{r}
+getModel(modelPOP)$topN
+```
+
+The result contains two ordered top-N recommendation lists, one for each user. 
+The recommended items can be inspected as a list.
+```{r}
+recom <- predict(modelPOP, known, n=3)
+head(as(recom,"list"))
+```
+
+```{r}
+recom3 <- bestN(recom, n = 3)
+head(as(recom3, "list"))
+
+```
+
+
+
+
+
+# USBF
 
 ```{r}
 model_method <- "UBCF"
@@ -614,36 +703,30 @@ model_params <- list(method = "cosine",
                      sample = FALSE, # already did this.
                      normalize = "center")
 
-modelPOP <-  getData(eval, "train") %>% Recommender( method = model_method, parameter= model_params)
+modelUBCF <-  getData(eval, "train") %>% Recommender( method = model_method, parameter= model_params)
 ```
 
 
 ```{r}
 
-predPOP <- predict(modelPOP, newdata = known, type = "ratings")
+predUBCF <- predict(modelUBCF, newdata = known, type = "ratings")
 
 ```
 
+Using USBF this method takes the longest time to run.
 
-Takes forever
+
 # Accuracy
 ```{r}
-accPOP <- calcPredictionAccuracy(predPOP, unknown)
+accUBCF <- calcPredictionAccuracy(predUBCF, unknown)
 ```
 
 
 
 ```{r}
-accPOP
+accUBCF
 ```
-
-
-
-```{r}
-
-```
-
-
+As shown above UBCF isn't accurate in predicting future items. Possibly with more work it will work.
 
 
 
@@ -651,17 +734,22 @@ accPOP
 # Conclusions
 
 
+Popular methods seems to be the better choice based on this small look into recommender lab.
+
+In conclusion, I was able to learns lot about `recommenderlab` and what it would take to build a recommendation engine. Ways to improve in the future is to possible use a technology like Spark which can handle larger amounts of data. That way I could make some more accurate predictions on the dataset. Another possible improvement would be to use another recommendation algorithm library and see if it could potentially do a better job.
 
 
 
-references
+
+
+# References
 
 
 https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset?select=Ratings.csv
 
 https://www.kaggle.com/datasets/skillsmuggler/amazon-ratings
 
-data : https://www.kaggle.com/code/laowingkin/netflix-movie-recommendation/data
+https://www.kaggle.com/code/laowingkin/netflix-movie-recommendation/data
 
 https://www.data-mania.com/blog/how-to-build-a-recommendation-engine-in-r/
 
