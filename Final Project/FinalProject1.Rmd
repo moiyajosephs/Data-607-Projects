@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "Final Project: Recommendation Systems"
 author: "Moiya Josephs"
 date: "5/12/2022"
 output: 
@@ -44,7 +44,7 @@ The Schema
 ## Reading the Data
 
 ```{r}
-ratings <- read.csv("https://github.com/moiyajosephs/Data-607-Projects/blob/main/Final%20Project/ratings_Beauty.csv", header = TRUE, sep = ",", dec = ".")
+ratings <- read.csv("https://raw.githubusercontent.com/moiyajosephs/Data-607-Projects/main/Final%20Project/ratings_Beauty.csv", header = TRUE, sep = ",", dec = ".", quote="")
 
 ```
 
@@ -207,6 +207,7 @@ unknown <- getData(beauty_evaluation, "unknown")
 
 ### Popular
 
+The popular method in recommender lab allows you to make recommendations based on the other popularly rated items. It is a popular recommendation method implementation. First we train on the training data, predict on the known and calculate accuracy on the unknown.
 
 ```{r}
 model_method <- "POPULAR"
@@ -214,6 +215,7 @@ model_method <- "POPULAR"
 
 modelPOP <- Recommender(train, method = model_method)
 ```
+
 
 
 ```{r}
@@ -460,6 +462,8 @@ accPOP <- calcPredictionAccuracy(predPOP, test_unknown)
 accPOP
 ```
 
+With sparse matrixes NaN can occur if there is not enough data. 
+
 ### Get the top N
 
 With popular recommendation model we can also distinguish the top n items from the data set.
@@ -473,7 +477,7 @@ getModel(modelPOP)$topN
 ```
 
 The result contains two ordered top-N recommendation lists, one for each user. 
-The recommended items can be inspected as a list.
+The recommended items can be inspected as a list. 
 ```{r}
 recom <- predict(modelPOP, test_known, n=3)
 head(as(recom,"list"))
@@ -599,7 +603,7 @@ data.frame(ratings = getRatings(books)) %>%
 ```
 
 ```{r}
-table(colCounts(books))
+table(colCounts(books))[1:100]
 ```
 
 ```{r}
@@ -664,6 +668,7 @@ accPOP <- calcPredictionAccuracy(predPOP, unknown)
 ```{r}
 accPOP
 ```
+The accuracy o the popular method did not perform as well on this dataset. Something with a user-based or item based may be better fit.
 
 
 ### Finding the top book:
@@ -724,23 +729,23 @@ Using USBF this method takes the longest time to run.
 accUBCF <- calcPredictionAccuracy(predUBCF, unknown)
 ```
 
-## Conclusions
-This was interesting to use to see which items would be the topN. Future iteratoins of the project could search for the item by the idea. This could be something useful for a business. 
-
 ```{r}
 accUBCF
 ```
 As shown above UBCF isn't accurate in predicting future items. Possibly with more work it will work.
 
 
+## Conclusions
+This was interesting to use to see which items would be the topN. Future iterations of the project could search for the item by the idea. This could be something useful for a business. 
+
 
 
 # Conclusions
 
 
-Popular methods seems to be the better choice based on this small look into recommender lab.
+Popular methods seems to be the better choice based on this small look into recommender lab. However it is important to take into account which data set you are using. Something like User Based will work well with a lot of sampled users. Item based will work well with a lot of sampled 
 
-In conclusion, I was able to learns lot about `recommenderlab` and what it would take to build a recommendation engine. Ways to improve in the future is to possible use a technology like Spark which can handle larger amounts of data. That way I could make some more accurate predictions on the dataset. Another possible improvement would be to use another recommendation algorithm library and see if it could potentially do a better job.
+In conclusion, I was able to learn a lot about `recommenderlab` and what it would take to build a recommendation engine. Ways to improve in the future is to possible use a technology like Spark which can handle larger amounts of data. That way I could make some more accurate predictions on the dataset. Another possible improvement would be to use another recommendation algorithm library and see if it could potentially do a better job.
 
 
 
@@ -757,7 +762,7 @@ In conclusion, I was able to learns lot about `recommenderlab` and what it would
 
 [How to Build a Recommendation Engine in R](https://www.data-mania.com/blog/how-to-build-a-recommendation-engine-in-r/)
 
-[Recommender System Tutorial](https://github.com/BrandonHoeft/Recommender-System-R-Tutorial/blob/master/RecommenderLab_Tutorial.md]()
+[Recommender System Tutorial](https://github.com/BrandonHoeft/Recommender-System-R-Tutorial/blob/master/RecommenderLab_Tutorial.md)
 
 
 [Recommender Lab Documentation](https://cran.r-project.org/web/packages/recommenderlab/vignettes/recommenderlab.pdf)
